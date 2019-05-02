@@ -13,6 +13,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Renci.SshNet;
+using CheckInApp.ServerConfiguration;
+using Newtonsoft.Json;
 
 namespace CheckInApp
 {
@@ -28,12 +30,15 @@ namespace CheckInApp
 
         private void ConnectToServerBTN_Click(object sender, RoutedEventArgs e)
         {
-            RemoteServer funnhallViborgLinuxServer = new RemoteServer("10.152.120.24", "funhall", "ubuntu123");
-            using (SshClient ssh = new SshClient(funnhallViborgLinuxServer.RemoteHost, funnhallViborgLinuxServer.Username, funnhallViborgLinuxServer.Password))
+            RemoteServerConfig config = ConfigurationReader.Read();
+            RemoteServer server = new RemoteServer(config);
+            List<RawBooking> rawBookings = new List<RawBooking>();
+            using (server = new RemoteServer(config))
             {
-                ssh.Connect();
-                ssh.Disconnect();
+                rawBookings = server.ReadAllBookings();
             }
+            BookingMapper bookingmapper = new BookingMapper();
+            List<Booking> bookings = bookingmapper.Map(rawBookings);
         }
     }
 }

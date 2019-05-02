@@ -1,24 +1,51 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CheckInApp.ServerConfiguration;
+using Newtonsoft.Json;
+using Renci.SshNet;
 
 namespace CheckInApp
 {
-    public class RemoteServer
+    public class RemoteServer : IDisposable
     {
-        //If theres time, make it posible to draw data from external source, as for example a textfile.
-        public string RemoteHost { get; set; }
-        public string Username { get; set; }
-        public string Password { get; set; }
+        private SftpClient client;
+        private RemoteServerConfig config;
 
-        public RemoteServer(string inputHost, string inputUser, string inputPassword)
+        public RemoteServer(RemoteServerConfig config)
         {
-            this.RemoteHost = inputHost;
-            this.Username = inputUser;
-            this.Password = inputPassword;
+            this.config = config;
+            client = new SftpClient(config.RemoteAddress, config.Username, config.Password);
         }
 
+        public List<RawBooking> ReadAllBookings()
+        {
+            client.Connect();
+            Console.WriteLine("Is Connected");
+            var files = client.ListDirectory(config.FilePath);
+            var bookings = new List<RawBooking>();
+            foreach (var file in files)
+            {
+                if (file.Name.EndsWith(".json"))
+                {
+                    string remoteFileName = file.Name;
+                    // This code persists the data to the local machine on a defined path
+                    //using (Stream file1 = File.Create(@"Bookings\booking1.json"))
+                    //{
+                    //    sftp.DownloadFile(@"bookings/" + remoteFileName, file1);
+                    //}
+
+                    // This code loads the data into RAM without persisting it.
+                    var json = client.ReadAllText(@"bookings/" + remoteFileName);
+                    RawBooking rawBooking = JsonConvert.DeserializeObject<RawBooking>(json);
+                    bookings.Add(rawBooking);
+                }
+            }
+            client.Disconnect();
+            return bookings;
+        }
+        public void Dispose()
+        {
+            client.Dispose();
+        }
     }
 }
